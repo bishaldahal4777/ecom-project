@@ -30,10 +30,16 @@
 </head>
 <body>
 
+    {% comment %} navbar {% endcomment %}
+    {% include 'includes/navbar.html'%}
+
     {% block content %}
     {% comment %} content {% endcomment %}
     {% endblock %}
 
+
+    {% comment %} footer {% endcomment %}
+    {% include 'includes/footer.html'%}
 
 </body>
 </html>

@@ -11,3 +11,4 @@ class Product(models.Model):
     stock = models.IntegerField()
     is_available = models.BooleanField(default=True)
     category = models.ForeignKey(Category,on_delete=models.CASCADE)
+    created_date = models.DateTimeField(auto_now_add=True)

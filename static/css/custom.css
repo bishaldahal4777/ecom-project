@@ -1,3 +1,4 @@
+/* Hide Radio button */
 .rate > input{
   display: none;
 }
@@ -11,6 +12,7 @@
   float: right;
 }
 
+/* Showing the stars */
 .rate > label:before{
   display: inline-block;
   font-size: 1.1rem;
@@ -21,16 +23,19 @@
   cursor: pointer;
 }
 
+/* Half star */
 .rate .half:before{
   content: "\f089";
   position: absolute;
   padding-right: 0;
 }
 
+/* Click and hover */
 input:checked ~ label, label:hover ~ label{
   color: #ffb503;
 }
 
+/* hover hightlight */
 input:checked + label:hover, input:checked ~ label:hover,input:checked ~ label:hover ~ label,
 label:hover ~ input:checked ~ label{
   color: #cc9000;

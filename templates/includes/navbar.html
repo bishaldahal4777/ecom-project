@@ -2,8 +2,8 @@
 
 
 <div class="container-fluid" style="text-align:center;background-image: linear-gradient(to right, #3167EB , #7A7A7A);padding:10px;font-weight: 600;position:sticky;top:0;z-index:999;">
-<a href="https://www.udemy.com/course/django-ecommerce-project-based-course-python-django-web-development/?couponCode=DJECOM" style="color: white;text-transform: uppercase;letter-spacing: 2px;"><span>&#x1F525</span> Purchase Full Course on Udemy | Upto 95% Discount <span>&#x1F525</span></a>
-</div> <!-- container //  -->
+<a href="https://meroparty.com/" style="color: white;text-transform: uppercase;letter-spacing: 2px;"><span>&#x1F525</span> Purchase Full Course on Meroparty.com | Upto 95% Discount <span>&#x1F525</span></a>
+</div> 
 
 <header class="section-header">
 
@@ -15,7 +15,7 @@
   <div class="col-lg-2 col-md-3 col-6">
     <a href="{% url 'home' %}" class="brand-wrap">
       <img class="logo" src="{% static './images/logo.png' %}">
-    </a> <!-- brand-wrap.// -->
+    </a> 
   </div>
   <div class="col-lg col-sm col-md col-6 flex-grow-0">
     <div class="category-wrap dropdown d-inline-block float-right">
@@ -28,8 +28,8 @@
           <a class="dropdown-item" href="{{ category.get_url }}">{{ category.category_name }} </a>
         {% endfor %}
       </div>
-    </div>  <!-- category-wrap.// -->
-  </div> <!-- col.// -->
+    </div>  
+  </div> 
   <a href="{% url 'store' %}" class="btn btn-outline-primary">Store</a>
   <div class="col-lg  col-md-6 col-sm-12 col">
     <form action="{% url 'search' %}" class="search" method='GET'>
@@ -42,8 +42,8 @@
             </button>
           </div>
         </div>
-    </form> <!-- search-wrap .end// -->
-  </div> <!-- col.// -->
+    </form> 
+  </div> 
   <div class="col-lg-3 col-sm-6 col-8 order-2 order-lg-3">
         <div class="d-flex justify-content-end mb-3 mb-lg-0">
           {% if user.id is None %}
@@ -68,14 +68,14 @@
             <span class="badge badge-pill badge-danger notify">{{cart_count}}</span>
           </a>
 
-        </div> <!-- widgets-wrap.// -->
+        </div> 
 
-      </div> <!-- col.// -->
-</div> <!-- row.// -->
-  </div> <!-- container.// -->
-</section> <!-- header-main .// -->
-
-
+      </div> 
+</div> 
+  </div> 
+</section>
 
 
-</header> <!-- section-header.// -->
+
+
+</header> 

@@ -7,7 +7,6 @@
 <section class="section-content padding-y bg">
 	<div class="container">
 
-		<!-- ============================ COMPONENT 1 ================================= -->
 		<h4 class="text-center mb-20">Review Your Order and Make Payment</h4>
 		<div class="row">
 
@@ -105,13 +104,37 @@
 						</dl>
 						<hr>
 						<p class="text-center mb-3">
-							<img src="{% static './images/misc/payments.png' %}" height="26">
+							<img src="{% static './images/misc/pay.png' %}" height="26">
 						</p>
 
+	<form action="https://uat.esewa.com.np/epay/main" method="POST">
+    
+    <!-- Amount Details -->
+    <input value="{{ grand_total }}" name="tAmt" type="hidden">
+    <input value="{{ grand_total }}" name="amt" type="hidden">
+    <input value="0" name="txAmt" type="hidden">
+    <input value="0" name="psc" type="hidden">
+    <input value="0" name="pdc" type="hidden">
 
-						<div id="paypal-button-container">
-							<!-- PayPal Button Will Load -->
-						</div>
+    <!-- Merchant Code (TEST) -->
+    <input value="EPAYTEST" name="scd" type="hidden">
+
+    <!-- Order ID -->
+    <input value="{{ order.order_number }}" name="pid" type="hidden">
+
+    <!-- Success URL -->
+    <input value="http://127.0.0.1:8000/esewa-success/" type="hidden" name="su">
+
+    <!-- Failure URL -->
+    <input value="http://127.0.0.1:8000/esewa-failure/" type="hidden" name="fu">
+
+    <!-- Button -->
+    <button type="submit" class="btn btn-success btn-block">
+        Pay with eSewa
+    </button>
+
+</form>
+						
 
 					</div> <!-- card-body.// -->
 				</div> <!-- card.// -->
@@ -151,13 +174,13 @@
 	var url = "{% url 'payments' %}"
 	var csrftoken = getCookie('csrftoken');
 	var orderID = "{{order.order_number}}"
-	var payment_method = 'PayPal'
-	var redirect_url = "{% url 'order_complete' %}"
-	// Render the PayPal button into #paypal-button-container
-	paypal.Buttons({
+	var payment_method = 'Esewa'
+// Render the PayPal button into #paypal-button-container
+
+	{% comment %} paypal.Buttons({
 
 		style: {
-			color: 'blue',
+			color: 'green',
 			shape: 'rect',
 			label: 'pay',
 			height: 40
@@ -203,7 +226,8 @@
 		}
 
 
-	}).render('#paypal-button-container');
+	}).render('#paypal-button-container');	var redirect_url = "{% url 'order_complete' %}" {% endcomment %}
+	
 </script>
 
 {% endblock %}

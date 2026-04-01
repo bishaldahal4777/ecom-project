@@ -88,7 +88,7 @@ def place_order(request, total=0, quantity=0,):
     for cart_item in cart_items:
         total += (cart_item.product.price * cart_item.quantity)
         quantity += cart_item.quantity
-    tax = (2 * total)/100
+    tax = (13 * total)/100
     grand_total = total + tax
 
     if request.method == 'POST':
@@ -133,6 +133,29 @@ def place_order(request, total=0, quantity=0,):
     else:
         return redirect('checkout')
 
+def esewa_success(request):
+    oid = request.GET.get('oid')
+    amt = request.GET.get('amt')
+    refId = request.GET.get('refId')
+
+    payment = Payment.objects.create(
+        user=request.user,
+        payment_id=refId,
+        payment_method='eSewa',
+        amount_paid=amt,
+        status='COMPLETED',
+    )
+
+    order = Order.objects.get(order_number=oid)
+    order.payment = payment
+    order.is_ordered = True
+    order.save()
+
+    return redirect('order_complete')
+
+
+def esewa_failure(request):
+    return redirect('checkout')
 
 def order_complete(request):
     order_number = request.GET.get('order_number')

@@ -8,7 +8,6 @@ from django.contrib import messages, auth
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 
-# Verification email
 from django.contrib.sites.shortcuts import get_current_site
 from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -18,7 +17,6 @@ from django.core.mail import EmailMessage
 
 from carts.views import _cart_id
 from carts.models import Cart, CartItem
-
 
 
 def register(request):
@@ -54,7 +52,6 @@ def register(request):
             to_email = email
             send_email = EmailMessage(mail_subject, message, to=[to_email])
             send_email.send()
-            # messages.success(request, 'Thank you for registering with us. We have sent you a verification email to your email address [rathan.kumar@gmail.com]. Please verify it.')
             return redirect('/accounts/login/?command=verification&email='+email)
     else:
         form = RegistrationForm()
@@ -222,10 +219,10 @@ def dashboard(request):
     orders = Order.objects.order_by('-created_at').filter(user_id=request.user.id, is_ordered=True)
     orders_count = orders.count()
 
-    userprofile = UserProfile.objects.get(user_id=request.user.id)
+    # userprofile = UserProfile.objects.get(user_id=request.user.id)
     context = {
         'orders_count': orders_count,
-        'userprofile': userprofile,
+        # 'userprofile': userprofile,
     }
     return render(request, 'accounts/dashboard.html', context)
 
@@ -301,27 +298,44 @@ def my_orders(request):
     return render(request, 'accounts/my_orders.html', context)
 
 
+# @login_required(login_url='login')
+# def edit_profile(request):
+#     # userprofile = get_object_or_404(UserProfile, user=request.user)
+#     if request.method == 'POST':
+#         user_form = UserForm(request.POST, instance=request.user)
+#         profile_form = UserProfileForm(request.POST, request.FILES, instance=userprofile)
+#         if user_form.is_valid() and profile_form.is_valid():
+#             user_form.save()
+#             profile_form.save()
+#             messages.success(request, 'Your profile has been updated.')
+#             return redirect('edit_profile')
+#     else:
+#         user_form = UserForm(instance=request.user)
+#         # profile_form = UserProfileForm(instance=userprofile)
+#     context = {
+#         'user_form': user_form,
+#         'profile_form': profile_form,
+#         # 'userprofile': userprofile,
+#     }
+#     return render(request, 'accounts/edit_profile.html', context)
+
 @login_required(login_url='login')
 def edit_profile(request):
-    userprofile = get_object_or_404(UserProfile, user=request.user)
     if request.method == 'POST':
         user_form = UserForm(request.POST, instance=request.user)
-        profile_form = UserProfileForm(request.POST, request.FILES, instance=userprofile)
-        if user_form.is_valid() and profile_form.is_valid():
+
+        if user_form.is_valid():
             user_form.save()
-            profile_form.save()
             messages.success(request, 'Your profile has been updated.')
             return redirect('edit_profile')
     else:
         user_form = UserForm(instance=request.user)
-        profile_form = UserProfileForm(instance=userprofile)
+
     context = {
         'user_form': user_form,
-        'profile_form': profile_form,
-        'userprofile': userprofile,
     }
-    return render(request, 'accounts/edit_profile.html', context)
 
+    return render(request, 'accounts/edit_profile.html', context)
 
 @login_required(login_url='login')
 def change_password(request):

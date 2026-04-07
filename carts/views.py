@@ -1,11 +1,12 @@
+import uuid
+
 from django.shortcuts import render, redirect, get_object_or_404
 from store.models import Product, Variation
 from .models import Cart, CartItem
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.decorators import login_required
-
-# Create your views here.
 from django.http import HttpResponse
+from django.contrib import messages
 
 def _cart_id(request):
     cart = request.session.session_key
@@ -187,6 +188,63 @@ def cart(request, total=0, quantity=0, cart_items=None):
     }
     return render(request, 'store/cart.html', context)
 
+@login_required(login_url='login')
+def esewa_payment(request, order_id):
+    """
+    Prepares eSewa payment form for a given order
+    """
+    order = get_object_or_404(Order, id=order_id)
+    
+    transaction_id = str(uuid.uuid4())  # Unique transaction ID
+
+    # Total amount
+    total_amount = order.total_amount
+
+    # Replace with your public ngrok URL or live domain
+    success_url = "https://abcd1234.ngrok.io/esewa-success/?oid=" + str(order.order_number)
+    failure_url = "https://abcd1234.ngrok.io/esewa-failure/?oid=" + str(order.order_number)
+
+    context = {
+        'order': order,
+        'transaction_id': transaction_id,
+        'total_amount': total_amount,
+        'success_url': success_url,
+        'failure_url': failure_url,
+        'merchant_code': "EPAYTEST",  # Sandbox code
+    }
+
+    return render(request, 'orders/payments.html', context)
+
+
+@login_required
+def esewa_success(request):
+    """
+    eSewa payment successful callback
+    """
+    order_number = request.GET.get('oid')
+    order = get_object_or_404(Order, order_number=order_number)
+
+    order.status = 'Paid'
+    order.payment_method = 'eSewa'
+    order.save()
+
+    messages.success(request, f"Payment successful! Your order {order.order_number} is confirmed.")
+    return render(request, 'orders/success.html', {'order': order})
+
+
+@login_required
+def esewa_failure(request):
+    """
+    eSewa payment failed callback
+    """
+    order_number = request.GET.get('oid')
+    order = get_object_or_404(Order, order_number=order_number)
+
+    order.status = 'Failed'
+    order.save()
+
+    messages.error(request, f"Payment failed for order {order.order_number}. Please try again.")
+    return render(request, 'orders/failure.html', {'order': order})
 
 @login_required(login_url='login')
 def checkout(request, total=0, quantity=0, cart_items=None):

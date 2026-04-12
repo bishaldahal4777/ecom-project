@@ -2,6 +2,8 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
 from carts.models import CartItem
 from .forms import OrderForm
 from .models import Order, Payment, OrderProduct
@@ -23,7 +25,6 @@ ESEWA_PAYMENT_URL  = "https://rc-epay.esewa.com.np/api/epay/main/v2/form"
 
 
 def generate_esewa_signature(total_amount, transaction_uuid, product_code, secret_key):
-    """eSewa v2 HMAC-SHA256 Signature — order MUST be: total_amount, transaction_uuid, product_code"""
     parameter_string = f"total_amount={total_amount},transaction_uuid={transaction_uuid},product_code={product_code}"
     hash_result = hmac.new(
         bytes(secret_key, 'utf-8'),
@@ -31,69 +32,6 @@ def generate_esewa_signature(total_amount, transaction_uuid, product_code, secre
         hashlib.sha256
     ).digest()
     return base64.b64encode(hash_result).decode('utf-8')
-
-
-# ==============================
-# PayPal / Generic Payment View
-# ==============================
-def payments(request):
-    body = json.loads(request.body)
-    order = Order.objects.get(
-        user=request.user,
-        is_ordered=False,
-        order_number=body['orderID']
-    )
-
-    payment = Payment(
-        user=request.user,
-        payment_id=body['transID'],
-        payment_method=body['payment_method'],
-        amount_paid=order.order_total,
-        status=body['status'],
-    )
-    payment.save()
-
-    order.payment = payment
-    order.is_ordered = True
-    order.save()
-
-    cart_items = CartItem.objects.filter(user=request.user)
-    for item in cart_items:
-        orderproduct = OrderProduct()
-        orderproduct.order_id = order.id
-        orderproduct.payment = payment
-        orderproduct.user_id = request.user.id
-        orderproduct.product_id = item.product_id
-        orderproduct.quantity = item.quantity
-        orderproduct.product_price = item.product.price
-        orderproduct.ordered = True
-        orderproduct.save()
-
-        cart_item = CartItem.objects.get(id=item.id)
-        product_variation = cart_item.variations.all()
-        orderproduct = OrderProduct.objects.get(id=orderproduct.id)
-        orderproduct.variations.set(product_variation)
-        orderproduct.save()
-
-        product = Product.objects.get(id=item.product_id)
-        product.stock -= item.quantity
-        product.save()
-
-    CartItem.objects.filter(user=request.user).delete()
-
-    mail_subject = 'Thank you for your order!'
-    message = render_to_string('orders/order_recieved_email.html', {
-        'user': request.user,
-        'order': order,
-    })
-    send_email = EmailMessage(mail_subject, message, to=[request.user.email])
-    send_email.send()
-
-    data = {
-        'order_number': order.order_number,
-        'transID': payment.payment_id,
-    }
-    return JsonResponse(data)
 
 
 # ==============================
@@ -115,7 +53,6 @@ def place_order(request, total=0, quantity=0):
     if request.method == 'POST':
         form = OrderForm(request.POST)
         if form.is_valid():
-            # Save order
             data = Order()
             data.user = current_user
             data.first_name = form.cleaned_data['first_name']
@@ -133,7 +70,6 @@ def place_order(request, total=0, quantity=0):
             data.ip = request.META.get('REMOTE_ADDR')
             data.save()
 
-            # Generate order number
             current_date = datetime.date.today().strftime("%Y%m%d")
             order_number = current_date + str(data.id)
             data.order_number = order_number
@@ -145,7 +81,7 @@ def place_order(request, total=0, quantity=0):
                 order_number=order_number
             )
 
-            # ✅ Generate eSewa payment fields
+            # Generate eSewa payment fields
             total_amount_str = str(int(grand_total)) if grand_total == int(grand_total) else f"{grand_total:.2f}"
             transaction_uuid = str(uuid.uuid4())
             signature = generate_esewa_signature(
@@ -168,7 +104,6 @@ def place_order(request, total=0, quantity=0):
                 'total': total,
                 'tax': tax,
                 'grand_total': grand_total,
-                # ✅ eSewa fields
                 'total_amount': total_amount_str,
                 'transaction_uuid': transaction_uuid,
                 'product_code': ESEWA_PRODUCT_CODE,
@@ -185,6 +120,8 @@ def place_order(request, total=0, quantity=0):
 # ==============================
 # eSewa Success Callback
 # ==============================
+@csrf_exempt
+@login_required(login_url='login')
 def esewa_success(request):
     encoded_data = request.GET.get('data')
     order_number = request.GET.get('order_number')
@@ -221,7 +158,11 @@ def esewa_success(request):
         order.save()
 
         # Move cart items to OrderProduct
-        cart_items = CartItem.objects.filter(user=request.user)
+        cart_items = CartItem.objects.filter(user=request.user, is_active=True)
+
+        if not cart_items.exists():
+            print("⚠️ No cart items found for user:", request.user)
+
         for item in cart_items:
             orderproduct = OrderProduct()
             orderproduct.order_id = order.id
@@ -233,9 +174,7 @@ def esewa_success(request):
             orderproduct.ordered = True
             orderproduct.save()
 
-            cart_item = CartItem.objects.get(id=item.id)
-            product_variation = cart_item.variations.all()
-            orderproduct = OrderProduct.objects.get(id=orderproduct.id)
+            product_variation = item.variations.all()
             orderproduct.variations.set(product_variation)
             orderproduct.save()
 
@@ -244,21 +183,26 @@ def esewa_success(request):
             product.stock -= item.quantity
             product.save()
 
-        # Clear cart
-        CartItem.objects.filter(user=request.user).delete()
+        # ✅ Clear cart after all items are processed
+        deleted_count, _ = CartItem.objects.filter(user=request.user).delete()
+        print(f"✅ Cart cleared — {deleted_count} item(s) deleted for user: {request.user}")
 
         return redirect(
             f'/orders/order_complete/?order_number={order.order_number}&payment_id={payment.payment_id}'
         )
 
+    except Order.DoesNotExist:
+        print(f"❌ Order not found: {order_number}")
+        return redirect('checkout')
     except Exception as e:
-        print(f"eSewa success error: {e}")
+        print(f"❌ eSewa success error: {e}")
         return redirect('checkout')
 
 
 # ==============================
 # eSewa Failure Callback
 # ==============================
+@csrf_exempt
 def esewa_failure(request):
     return redirect('checkout')
 

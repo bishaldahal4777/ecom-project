@@ -86,7 +86,20 @@
 			</div> <!-- row.// -->
 		</div> <!-- card.// -->
 		<!-- ============================ COMPONENT 1 END .// ================================= -->
-
+{% if recommended %}
+<h4>You may also like</h4>
+<div class="row">
+    {% for product in recommended %}
+    <div class="col-md-3">
+        <a href="{{ product.get_url }}">
+            <img src="{{ product.images.url }}" alt="{{ product.product_name }}">
+            <p>{{ product.product_name }}</p>
+            <p>Rs. {{ product.price }}</p>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 		<br>
 
 		<div class="row">

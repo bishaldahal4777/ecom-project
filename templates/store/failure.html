@@ -2,11 +2,15 @@
 {% block content %}
 <div class="container mt-5">
     <div class="alert alert-danger text-center">
-        <h3>Payment Failed ❌</h3>
-        <p>Sorry, {{ order.full_name }}.</p>
-        <p>Your order number: <b>{{ order.order_number }}</b></p>
-        <p>Please try again or contact support.</p>
-        <a href="{% url 'checkout' %}" class="btn btn-warning mt-3">Retry Payment</a>
+        <h3>❌ Payment Failed!</h3>
+        <p>Your payment could not be processed.</p>
+        <p>Please try again.</p>
+        <a href="{% url 'checkout' %}" class="btn btn-warning mt-3">
+            🔄 Retry Payment
+        </a>
+        <a href="{% url 'home' %}" class="btn btn-secondary mt-3">
+            🏠 Back to Home
+        </a>
     </div>
 </div>
 {% endblock %}

@@ -1,32 +1,13 @@
 {% extends 'base.html' %}
 {% load static %}
-
 {% block content %}
-
 <section class="section-content padding-y bg">
     <div class="container">
-
         <h4 class="text-center mb-4">Review Your Order & Make Payment</h4>
         <div class="row">
 
             <!-- Left: Billing & Products -->
             <aside class="col-lg-8">
-                
-                <!-- Billing Address -->
-                <div class="card mb-3">
-                    <h5 class="card-header">Billing Address</h5>
-                    <div class="card-body">
-                        <p class="mb-1">{{ order.full_name }}</p>
-                        <p class="mb-1">{{ order.full_address }}</p>
-                        <p class="mb-1">{{ order.city }}, {{ order.state }}</p>
-                        <p class="mb-1">{{ order.country }}</p>
-                        <p class="mb-1">{{ order.email }}</p>
-                        <p class="mb-1">{{ order.phone }}</p>
-                        {% if order.order_note %}
-                        <p><b>Order Note:</b> {{ order.order_note }}</p>
-                        {% endif %}
-                    </div>
-                </div>
 
                 <!-- Payment Method -->
                 <div class="card mb-3">
@@ -84,38 +65,30 @@
 
             <!-- Right: Order Summary & Payment -->
             <aside class="col-lg-4">
-
                 <div class="card mb-3">
                     <div class="card-body">
                         <h5 class="mb-3">Order Summary</h5>
                         <dl class="d-flex justify-content-between">
                             <dt>Total Price:</dt>
-                            <dd>Nrs {{ total }}</dd>
-                        </dl>
-                        <dl class="d-flex justify-content-between">
-                            <dt>Tax:</dt>
-                            <dd>Nrs {{ tax }}</dd>
-                        </dl>
-                        <dl class="d-flex justify-content-between fw-bold">
-                            <dt>Grand Total:</dt>
-                            <dd>Nrs {{ grand_total }}</dd>
+                            <dd>Nrs {{ total_amount }}</dd>
                         </dl>
                         <hr>
 
-                    <form action="https://uat.esewa.com.np/epay/main" method="POST">
-    <input type="hidden" name="tAmt" value="{{ total_amount }}">
-    <input type="hidden" name="amt" value="{{ total_amount }}">
-    <input type="hidden" name="txAmt" value="0">
-    <input type="hidden" name="psc" value="0">
-    <input type="hidden" name="pdc" value="0">
-    <input type="hidden" name="scd" value="{{ merchant_code }}">
-    <input type="hidden" name="pid" value="{{ transaction_id }}">
-    <input type="hidden" name="su" value="{{ success_url }}">
-    <input type="hidden" name="fu" value="{{ failure_url }}">
-    <button type="submit" class="btn btn-success w-100 py-2">
-        💳 Pay with eSewa
-    </button>
-</form> 
+                        <!-- ✅ eSewa v1 Form (stable & working) -->
+                        <form action="https://uat.esewa.com.np/epay/main" method="POST">
+                            <input type="hidden" name="tAmt" value="{{ total_amount }}">
+                            <input type="hidden" name="amt"  value="{{ total_amount }}">
+                            <input type="hidden" name="txAmt" value="0">
+                            <input type="hidden" name="psc"  value="0">
+                            <input type="hidden" name="pdc"  value="0">
+                            <input type="hidden" name="scd"  value="EPAYTEST">
+                            <input type="hidden" name="pid"  value="{{ transaction_uuid }}">
+                            <input type="hidden" name="su"   value="{{ success_url }}">
+                            <input type="hidden" name="fu"   value="{{ failure_url }}">
+                            <button type="submit" class="btn btn-success w-100 py-2">
+                                💳 Pay with eSewa
+                            </button>
+                        </form>
 
                         <div class="mt-3 text-center">
                             <small class="text-muted">
@@ -124,11 +97,9 @@
                         </div>
                     </div>
                 </div>
-
             </aside>
 
         </div>
     </div>
 </section>
-
 {% endblock %}

@@ -1,12 +1,16 @@
+import hmac
+import hashlib
+import base64
 import uuid
+import json
 
 from django.shortcuts import render, redirect, get_object_or_404
 from store.models import Product, Variation
-from .models import Cart, CartItem
+from .models import Cart, CartItem, Transaction
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
 from django.contrib import messages
+
 
 def _cart_id(request):
     cart = request.session.session_key
@@ -14,23 +18,21 @@ def _cart_id(request):
         cart = request.session.create()
     return cart
 
+
 def add_cart(request, product_id):
     current_user = request.user
-    product = Product.objects.get(id=product_id) #get the product
-    # If the user is authenticated
+    product = Product.objects.get(id=product_id)
     if current_user.is_authenticated:
         product_variation = []
         if request.method == 'POST':
             for item in request.POST:
                 key = item
                 value = request.POST[key]
-
                 try:
                     variation = Variation.objects.get(product=product, variation_category__iexact=key, variation_value__iexact=value)
                     product_variation.append(variation)
                 except:
                     pass
-
 
         is_cart_item_exists = CartItem.objects.filter(product=product, user=current_user).exists()
         if is_cart_item_exists:
@@ -43,13 +45,11 @@ def add_cart(request, product_id):
                 id.append(item.id)
 
             if product_variation in ex_var_list:
-                # increase the cart item quantity
                 index = ex_var_list.index(product_variation)
                 item_id = id[index]
                 item = CartItem.objects.get(product=product, id=item_id)
                 item.quantity += 1
                 item.save()
-
             else:
                 item = CartItem.objects.create(product=product, quantity=1, user=current_user)
                 if len(product_variation) > 0:
@@ -57,45 +57,33 @@ def add_cart(request, product_id):
                     item.variations.add(*product_variation)
                 item.save()
         else:
-            cart_item = CartItem.objects.create(
-                product = product,
-                quantity = 1,
-                user = current_user,
-            )
+            cart_item = CartItem.objects.create(product=product, quantity=1, user=current_user)
             if len(product_variation) > 0:
                 cart_item.variations.clear()
                 cart_item.variations.add(*product_variation)
             cart_item.save()
         return redirect('cart')
-    # If the user is not authenticated
     else:
         product_variation = []
         if request.method == 'POST':
             for item in request.POST:
                 key = item
                 value = request.POST[key]
-
                 try:
                     variation = Variation.objects.get(product=product, variation_category__iexact=key, variation_value__iexact=value)
                     product_variation.append(variation)
                 except:
                     pass
 
-
         try:
-            cart = Cart.objects.get(cart_id=_cart_id(request)) # get the cart using the cart_id present in the session
+            cart = Cart.objects.get(cart_id=_cart_id(request))
         except Cart.DoesNotExist:
-            cart = Cart.objects.create(
-                cart_id = _cart_id(request)
-            )
+            cart = Cart.objects.create(cart_id=_cart_id(request))
         cart.save()
 
         is_cart_item_exists = CartItem.objects.filter(product=product, cart=cart).exists()
         if is_cart_item_exists:
             cart_item = CartItem.objects.filter(product=product, cart=cart)
-            # existing_variations -> database
-            # current variation -> product_variation
-            # item_id -> database
             ex_var_list = []
             id = []
             for item in cart_item:
@@ -103,16 +91,12 @@ def add_cart(request, product_id):
                 ex_var_list.append(list(existing_variation))
                 id.append(item.id)
 
-            print(ex_var_list)
-
             if product_variation in ex_var_list:
-                # increase the cart item quantity
                 index = ex_var_list.index(product_variation)
                 item_id = id[index]
                 item = CartItem.objects.get(product=product, id=item_id)
                 item.quantity += 1
                 item.save()
-
             else:
                 item = CartItem.objects.create(product=product, quantity=1, cart=cart)
                 if len(product_variation) > 0:
@@ -120,11 +104,7 @@ def add_cart(request, product_id):
                     item.variations.add(*product_variation)
                 item.save()
         else:
-            cart_item = CartItem.objects.create(
-                product = product,
-                quantity = 1,
-                cart = cart,
-            )
+            cart_item = CartItem.objects.create(product=product, quantity=1, cart=cart)
             if len(product_variation) > 0:
                 cart_item.variations.clear()
                 cart_item.variations.add(*product_variation)
@@ -133,7 +113,6 @@ def add_cart(request, product_id):
 
 
 def remove_cart(request, product_id, cart_item_id):
-
     product = get_object_or_404(Product, id=product_id)
     try:
         if request.user.is_authenticated:
@@ -174,77 +153,20 @@ def cart(request, total=0, quantity=0, cart_items=None):
         for cart_item in cart_items:
             total += (cart_item.product.price * cart_item.quantity)
             quantity += cart_item.quantity
-        tax = (13 * total)/100
+        tax = (13 * total) / 100
         grand_total = total + tax
     except ObjectDoesNotExist:
-        pass #just ignore
+        pass
 
     context = {
         'total': total,
         'quantity': quantity,
         'cart_items': cart_items,
-        'tax'       : tax,
+        'tax': tax,
         'grand_total': grand_total,
     }
     return render(request, 'store/cart.html', context)
 
-@login_required(login_url='login')
-def esewa_payment(request, order_id):
-    """
-    Prepares eSewa payment form for a given order
-    """
-    order = get_object_or_404(Order, id=order_id)
-    
-    transaction_id = str(uuid.uuid4())  # Unique transaction ID
-
-    # Total amount
-    total_amount = order.total_amount
-
-    # Replace with your public ngrok URL or live domain
-    success_url = "https://abcd1234.ngrok.io/esewa-success/?oid=" + str(order.order_number)
-    failure_url = "https://abcd1234.ngrok.io/esewa-failure/?oid=" + str(order.order_number)
-
-    context = {
-        'order': order,
-        'transaction_id': transaction_id,
-        'total_amount': total_amount,
-        'success_url': success_url,
-        'failure_url': failure_url,
-        'merchant_code': "EPAYTEST",  # Sandbox code
-    }
-
-    return render(request, 'orders/payments.html', context)
-
-
-@login_required
-def esewa_success(request):
-    """
-    eSewa payment successful callback
-    """
-    order_number = request.GET.get('oid')
-    order = get_object_or_404(Order, order_number=order_number)
-
-    order.status = 'Paid'
-    order.payment_method = 'eSewa'
-    order.save()
-
-    messages.success(request, f"Payment successful! Your order {order.order_number} is confirmed.")
-    return render(request, 'orders/success.html', {'order': order})
-
-
-@login_required
-def esewa_failure(request):
-    """
-    eSewa payment failed callback
-    """
-    order_number = request.GET.get('oid')
-    order = get_object_or_404(Order, order_number=order_number)
-
-    order.status = 'Failed'
-    order.save()
-
-    messages.error(request, f"Payment failed for order {order.order_number}. Please try again.")
-    return render(request, 'orders/failure.html', {'order': order})
 
 @login_required(login_url='login')
 def checkout(request, total=0, quantity=0, cart_items=None):
@@ -259,16 +181,106 @@ def checkout(request, total=0, quantity=0, cart_items=None):
         for cart_item in cart_items:
             total += (cart_item.product.price * cart_item.quantity)
             quantity += cart_item.quantity
-        tax = (13 * total)/100
+        tax = (13 * total) / 100
         grand_total = total + tax
     except ObjectDoesNotExist:
-        pass #just ignore
+        pass
 
     context = {
         'total': total,
         'quantity': quantity,
         'cart_items': cart_items,
-        'tax'       : tax,
+        'tax': tax,
         'grand_total': grand_total,
     }
     return render(request, 'store/checkout.html', context)
+
+
+# ✅ SINGLE clean signature generator (duplicate removed)
+def generate_esewa_signature(total_amount, transaction_uuid, product_code, secret_key):
+    """
+    Generates HMAC-SHA256 signature for eSewa v2 API.
+    The parameter string order MUST be: total_amount, transaction_uuid, product_code
+    """
+    parameter_string = f"total_amount={total_amount},transaction_uuid={transaction_uuid},product_code={product_code}"
+    secret_key_bytes = bytes(secret_key, 'utf-8')
+    data_bytes = bytes(parameter_string, 'utf-8')
+    hash_result = hmac.new(secret_key_bytes, data_bytes, hashlib.sha256).digest()
+    return base64.b64encode(hash_result).decode('utf-8')
+
+
+@login_required(login_url='login')
+def buy(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+
+    transaction_uuid = str(uuid.uuid4())
+    product_code = "EPAYTEST"
+    secret_key = "8gBm/:&EnhH.1/q"
+
+    # ✅ Single clean line — gives "500" not "500.0"
+    total_amount = str(int(float(product.price)))
+
+    signature = generate_esewa_signature(total_amount, transaction_uuid, product_code, secret_key)
+
+    # Debug — check your terminal to verify values
+    print("=== eSewa Debug ===")
+    print(f"total_amount: {total_amount}")
+    print(f"transaction_uuid: {transaction_uuid}")
+    print(f"signature: {signature}")
+
+    # Save transaction as pending
+    Transaction.objects.create(
+        product=product,
+        transaction_uuid=transaction_uuid,
+        transaction_amount=total_amount,
+        tax_amount=0,
+        total_amount=total_amount,
+        service_charge=0,
+        delivery_charge=0,
+        transaction_status='pending',
+    )
+
+    context = {
+        'product': product,
+        'amount': total_amount,
+        'tax_amount': '0',
+        'total_amount': total_amount,
+        'transaction_uuid': transaction_uuid,
+        'product_code': product_code,
+        'signature': signature,
+        'service_charge': '0',
+        'delivery_charge': '0',
+        'success_url': f"http://127.0.0.1:8000/cart/success/{transaction_uuid}/",
+        'failure_url': f"http://127.0.0.1:8000/cart/failure/{transaction_uuid}/",
+    }
+    return render(request, 'orders/payments.html', context)
+
+@login_required(login_url='login')
+def success(request, uid):  # ✅ uid from URL
+    encoded_data = request.GET.get('data')
+    if encoded_data:
+        try:
+            decoded_bytes = base64.b64decode(encoded_data)
+            decoded_data = json.loads(decoded_bytes.decode('utf-8'))
+
+            if decoded_data.get('status') == 'COMPLETE':
+                transaction_uuid = decoded_data.get('transaction_uuid')
+
+                # ✅ Update the existing transaction to completed
+                try:
+                    transaction = Transaction.objects.get(transaction_uuid=transaction_uuid)
+                    transaction.transaction_status = 'completed'
+                    transaction.save()
+                except Transaction.DoesNotExist:
+                    pass
+
+                return render(request, 'orders/success.html', {'data': decoded_data})
+
+        except Exception as e:
+            messages.error(request, f"Error verifying payment: {e}")
+
+    return redirect('checkout')
+
+
+def failure(request, uid):  # ✅ added failure view
+    return render(request, 'orders/failure.html')

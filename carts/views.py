@@ -5,11 +5,13 @@ import uuid
 import json
 
 from django.shortcuts import render, redirect, get_object_or_404
-from store.models import Product, Variation
-from .models import Cart, CartItem, Transaction
-from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.core.exceptions import ObjectDoesNotExist
+from django.views.decorators.csrf import csrf_exempt
+from store.models import Product, Variation
+from .models import Cart, CartItem, Transaction
+
 
 
 def _cart_id(request):
@@ -19,9 +21,23 @@ def _cart_id(request):
     return cart
 
 
+def generate_esewa_signature(total_amount, transaction_uuid, product_code, secret_key):
+    """
+    eSewa v2 HMAC-SHA256 Signature Generator
+    Order MUST be: total_amount, transaction_uuid, product_code
+    """
+    parameter_string = f"total_amount={total_amount},transaction_uuid={transaction_uuid},product_code={product_code}"
+    secret_key_bytes = bytes(secret_key, 'utf-8')
+    data_bytes = bytes(parameter_string, 'utf-8')
+    hash_result = hmac.new(secret_key_bytes, data_bytes, hashlib.sha256).digest()
+    return base64.b64encode(hash_result).decode('utf-8')
+
+
+
 def add_cart(request, product_id):
     current_user = request.user
     product = Product.objects.get(id=product_id)
+
     if current_user.is_authenticated:
         product_variation = []
         if request.method == 'POST':
@@ -29,7 +45,11 @@ def add_cart(request, product_id):
                 key = item
                 value = request.POST[key]
                 try:
-                    variation = Variation.objects.get(product=product, variation_category__iexact=key, variation_value__iexact=value)
+                    variation = Variation.objects.get(
+                        product=product,
+                        variation_category__iexact=key,
+                        variation_value__iexact=value
+                    )
                     product_variation.append(variation)
                 except:
                     pass
@@ -63,6 +83,7 @@ def add_cart(request, product_id):
                 cart_item.variations.add(*product_variation)
             cart_item.save()
         return redirect('cart')
+
     else:
         product_variation = []
         if request.method == 'POST':
@@ -70,7 +91,11 @@ def add_cart(request, product_id):
                 key = item
                 value = request.POST[key]
                 try:
-                    variation = Variation.objects.get(product=product, variation_category__iexact=key, variation_value__iexact=value)
+                    variation = Variation.objects.get(
+                        product=product,
+                        variation_category__iexact=key,
+                        variation_value__iexact=value
+                    )
                     product_variation.append(variation)
                 except:
                     pass
@@ -196,40 +221,46 @@ def checkout(request, total=0, quantity=0, cart_items=None):
     return render(request, 'store/checkout.html', context)
 
 
-# ✅ SINGLE clean signature generator (duplicate removed)
-def generate_esewa_signature(total_amount, transaction_uuid, product_code, secret_key):
-    """
-    Generates HMAC-SHA256 signature for eSewa v2 API.
-    The parameter string order MUST be: total_amount, transaction_uuid, product_code
-    """
-    parameter_string = f"total_amount={total_amount},transaction_uuid={transaction_uuid},product_code={product_code}"
-    secret_key_bytes = bytes(secret_key, 'utf-8')
-    data_bytes = bytes(parameter_string, 'utf-8')
-    hash_result = hmac.new(secret_key_bytes, data_bytes, hashlib.sha256).digest()
-    return base64.b64encode(hash_result).decode('utf-8')
+# ==============================
+# ✅ ESEWA PAYMENT VIEWS
+# ==============================
 
+# eSewa test credentials
+ESEWA_PRODUCT_CODE = "EPAYTEST"
+ESEWA_SECRET_KEY   = "8gBm/:&EnhH.1/q"
+ESEWA_PAYMENT_URL  = "https://rc-epay.esewa.com.np/api/epay/main/v2/form"
 
+@csrf_exempt
 @login_required(login_url='login')
-def buy(request, product_id):
+def esewa_payment(request, product_id):
     product = get_object_or_404(Product, id=product_id)
+    cart_items = CartItem.objects.filter(user=request.user, is_active=True)
 
-    transaction_uuid = str(uuid.uuid4())
-    product_code = "EPAYTEST"
-    secret_key = "8gBm/:&EnhH.1/q"
-
-    # ✅ Single clean line — gives "500" not "500.0"
+    # ✅ Clean amount — eSewa needs "500" not "500.0"
     total_amount = str(int(float(product.price)))
 
-    signature = generate_esewa_signature(total_amount, transaction_uuid, product_code, secret_key)
+    # ✅ Generate unique transaction ID
+    transaction_uuid = str(uuid.uuid4())
 
-    # Debug — check your terminal to verify values
-    print("=== eSewa Debug ===")
-    print(f"total_amount: {total_amount}")
-    print(f"transaction_uuid: {transaction_uuid}")
-    print(f"signature: {signature}")
+    # ✅ Generate signature
+    signature = generate_esewa_signature(
+        total_amount,
+        transaction_uuid,
+        ESEWA_PRODUCT_CODE,
+        ESEWA_SECRET_KEY
+    )
 
-    # Save transaction as pending
+    # ✅ Debug — check terminal
+    print("======= eSewa Debug =======")
+    print(f"Product      : {product.product_name}")
+    print(f"total_amount : {total_amount}")
+    print(f"UUID         : {transaction_uuid}")
+    print(f"Signature    : {signature}")
+    print("===========================")
+
+    # ✅ Save pending transaction to database
     Transaction.objects.create(
+        user=request.user,
         product=product,
         transaction_uuid=transaction_uuid,
         transaction_amount=total_amount,
@@ -242,45 +273,63 @@ def buy(request, product_id):
 
     context = {
         'product': product,
-        'amount': total_amount,
-        'tax_amount': '0',
+        'cart_items': cart_items,
         'total_amount': total_amount,
         'transaction_uuid': transaction_uuid,
-        'product_code': product_code,
+        'product_code': ESEWA_PRODUCT_CODE,
         'signature': signature,
-        'service_charge': '0',
-        'delivery_charge': '0',
-        'success_url': f"http://127.0.0.1:8000/cart/success/{transaction_uuid}/",
-        'failure_url': f"http://127.0.0.1:8000/cart/failure/{transaction_uuid}/",
+        'esewa_payment_url': ESEWA_PAYMENT_URL,
+        'success_url': f"http://127.0.0.1:8000/cart/esewa/success/{transaction_uuid}/",
+        'failure_url': f"http://127.0.0.1:8000/cart/esewa/failure/{transaction_uuid}/",
     }
     return render(request, 'orders/payments.html', context)
 
+@csrf_exempt
 @login_required(login_url='login')
-def success(request, uid):  # ✅ uid from URL
+def esewa_success(request, uid):
     encoded_data = request.GET.get('data')
+
     if encoded_data:
         try:
             decoded_bytes = base64.b64decode(encoded_data)
             decoded_data = json.loads(decoded_bytes.decode('utf-8'))
 
-            if decoded_data.get('status') == 'COMPLETE':
-                transaction_uuid = decoded_data.get('transaction_uuid')
+            print("eSewa Success Data:", decoded_data)  # debug
 
-                # ✅ Update the existing transaction to completed
+            status           = decoded_data.get('status')
+            transaction_uuid = decoded_data.get('transaction_uuid')
+            total_amount     = decoded_data.get('total_amount')
+
+            if status == 'COMPLETE':
                 try:
                     transaction = Transaction.objects.get(transaction_uuid=transaction_uuid)
                     transaction.transaction_status = 'completed'
                     transaction.save()
-                except Transaction.DoesNotExist:
-                    pass
 
-                return render(request, 'orders/success.html', {'data': decoded_data})
+                    return render(request, 'orders/esewa_success.html', {
+                        'transaction_uuid': transaction_uuid,
+                        'total_amount': total_amount,
+                        'status': status,
+                        'product_name': transaction.product.product_name,
+                    })
+                except Transaction.DoesNotExist:
+                    messages.error(request, "Transaction not found.")
+                    return redirect('checkout')
 
         except Exception as e:
-            messages.error(request, f"Error verifying payment: {e}")
+            print(f"eSewa Success Error: {e}")
+            messages.error(request, f"Payment verification error: {e}")
 
     return redirect('checkout')
 
 
-def failure(request, uid):  # ✅ added failure view
-    return render(request, 'orders/failure.html')
+@csrf_exempt
+def esewa_failure(request, uid):
+    try:
+        transaction = Transaction.objects.get(transaction_uuid=uid)
+        transaction.transaction_status = 'failed'
+        transaction.save()
+    except Transaction.DoesNotExist:
+        pass
+
+    return render(request, 'orders/esewa_failure.html')

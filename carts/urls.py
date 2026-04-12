@@ -7,7 +7,9 @@ urlpatterns = [
     path('remove_cart/<int:product_id>/<int:cart_item_id>/', views.remove_cart, name='remove_cart'),
     path('remove_cart_item/<int:product_id>/<int:cart_item_id>/', views.remove_cart_item, name='remove_cart_item'),
     path('checkout/', views.checkout, name='checkout'),
-    path('esewa/<int:product_id>/', views.buy, name='esewa_payment'),   # ✅ product_id
-    path('success/<str:uid>/', views.success, name='esewa_success'),    # ✅ str:uid
-    path('failure/<str:uid>/', views.failure, name='esewa_failure'),    # ✅ added failure
+
+    # eSewa URLs
+    path('esewa/<int:product_id>/', views.esewa_payment, name='esewa_payment'),
+    path('esewa/success/<str:uid>/', views.esewa_success, name='esewa_success'),
+    path('esewa/failure/<str:uid>/', views.esewa_failure, name='esewa_failure'),
 ]

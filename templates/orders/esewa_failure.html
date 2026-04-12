@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5">
+    <div class="card mx-auto" style="max-width: 500px;">
+        <div class="card-body text-center p-5">
+            <h2 class="text-danger">❌ Payment Failed!</h2>
+            <hr>
+            <p class="text-muted">
+                Your eSewa payment could not be completed.
+            </p>
+            <p class="text-muted">Please try again.</p>
+            <a href="{% url 'checkout' %}" class="btn btn-warning mt-2">
+                🔄 Retry Payment
+            </a>
+            <a href="{% url 'home' %}" class="btn btn-secondary mt-2">
+                🏠 Back to Home
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5">
+    <div class="card mx-auto" style="max-width: 500px;">
+        <div class="card-body text-center p-5">
+            <h2 style="color: #60BB46;">✅ Payment Successful!</h2>
+            <hr>
+            <p class="text-muted">Thank you for your purchase!</p>
+            <table class="table table-bordered mt-3 text-start">
+                <tr>
+                    <th>Transaction ID</th>
+                    <td>{{ transaction_uuid }}</td>
+                </tr>
+                <tr>
+                    <th>Product</th>
+                    <td>{{ product_name }}</td>
+                </tr>
+                <tr>
+                    <th>Amount Paid</th>
+                    <td>Nrs {{ total_amount }}</td>
+                </tr>
+                <tr>
+                    <th>Status</th>
+                    <td>
+                        <span class="badge bg-success">{{ status }}</span>
+                    </td>
+                </tr>
+            </table>
+            <a href="{% url 'home' %}"
+               class="btn mt-3"
+               style="background-color: #60BB46; color: white;">
+                🏠 Back to Home
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

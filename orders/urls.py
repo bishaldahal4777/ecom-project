@@ -5,7 +5,7 @@ urlpatterns = [
     path('place_order/', views.place_order, name='place_order'),
     path('payments/', views.payments, name='payments'),
     path('order_complete/', views.order_complete, name='order_complete'),
-
-    path('esewa-success/', views.esewa_success, name='esewa_success'),
-    path('esewa-failure/', views.esewa_failure, name='esewa_failure'),
+    # ✅ eSewa callbacks
+    path('esewa/success/', views.esewa_success, name='esewa_success'),
+    path('esewa/failure/', views.esewa_failure, name='esewa_failure'),
 ]

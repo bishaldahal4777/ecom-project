@@ -1,16 +1,14 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="container mt-5">
-    <div class="alert alert-danger text-center">
-        <h3>❌ Payment Failed!</h3>
-        <p>Your payment could not be processed.</p>
-        <p>Please try again.</p>
-        <a href="{% url 'checkout' %}" class="btn btn-warning mt-3">
-            🔄 Retry Payment
-        </a>
-        <a href="{% url 'home' %}" class="btn btn-secondary mt-3">
-            🏠 Back to Home
-        </a>
+    <div class="card mx-auto" style="max-width: 500px;">
+        <div class="card-body text-center p-5">
+            <h2 class="text-danger">❌ Payment Failed!</h2>
+            <hr>
+            <p class="text-muted">Your payment could not be processed. Please try again.</p>
+            <a href="{% url 'checkout' %}" class="btn btn-warning mt-2">🔄 Retry</a>
+            <a href="{% url 'home' %}" class="btn btn-secondary mt-2">🏠 Home</a>
+        </div>
     </div>
 </div>
 {% endblock %}

@@ -1,0 +1,96 @@
+<!-- Add this filter bar to your store.html, above the product grid -->
+
+<div class="filter-bar">
+    <form method="GET" action="" class="filter-form">
+
+        <!-- Keep category slug if browsing a category -->
+        <div class="filter-group">
+            <label>Min Price (Rs.)</label>
+            <input type="number" name="min_price" value="{{ min_price }}" placeholder="0" min="0">
+        </div>
+
+        <div class="filter-group">
+            <label>Max Price (Rs.)</label>
+            <input type="number" name="max_price" value="{{ max_price }}" placeholder="Any" min="0">
+        </div>
+
+        <div class="filter-group">
+            <label>Sort By</label>
+            <select name="sort_by">
+                <option value="random"     {% if sort_by == 'random'     %}selected{% endif %}>Random</option>
+                <option value="price_low"  {% if sort_by == 'price_low'  %}selected{% endif %}>Price: Low to High</option>
+                <option value="price_high" {% if sort_by == 'price_high' %}selected{% endif %}>Price: High to Low</option>
+            </select>
+        </div>
+
+        <button type="submit" class="filter-btn">Apply</button>
+        <a href="?" class="filter-clear">Clear</a>
+
+    </form>
+</div>
+
+<style>
+    .filter-bar {
+        background: #f9f9f9;
+        border: 1px solid #e8e8e8;
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+    }
+
+    .filter-form {
+        display: flex;
+        align-items: flex-end;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .filter-group label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .filter-group input,
+    .filter-group select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        width: 140px;
+        background: #fff;
+    }
+
+    .filter-btn {
+        padding: 8px 20px;
+        background: #333;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+    }
+
+    .filter-btn:hover {
+        background: #555;
+    }
+
+    .filter-clear {
+        font-size: 13px;
+        color: #999;
+        text-decoration: none;
+        padding: 8px 4px;
+    }
+
+    .filter-clear:hover {
+        color: #333;
+    }
+</style>

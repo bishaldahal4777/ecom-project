@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'carts',
     'orders',
     'admin_thumbnails',
+    'unfold',
 ]
 
 MIDDLEWARE = [

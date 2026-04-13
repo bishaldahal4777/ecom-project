@@ -10,31 +10,66 @@ from orders.models import OrderProduct
 
 
 def store(request, category_slug=None):
+    """
+    Price Range Filter Algorithm:
+    Step 1 — Read min_price and max_price from the request (URL parameters)
+    Step 2 — Start with all available products
+    Step 3 — If category selected, narrow down to that category first
+    Step 4 — If price range given, filter products that fall within the range
+    Step 5 — Sort the filtered results (by price or random)
+    Step 6 — Paginate and return
+    """
     categories = None
     products = None
-
+ 
+    # Step 1: Read filter inputs from URL
+    min_price = request.GET.get('min_price', '')
+    max_price = request.GET.get('max_price', '')
+    sort_by   = request.GET.get('sort_by', 'random')
+ 
+    # Step 2 & 3: Base queryset
     if category_slug is not None:
         categories = get_object_or_404(Category, slug=category_slug)
         products = Product.objects.filter(
             category=categories,
             is_available=True
-        ).order_by('?')  # random order on every refresh
-        paginator = Paginator(products, 1)
-        page = request.GET.get('page')
-        paged_products = paginator.get_page(page)
-        product_count = products.count()
+        )
     else:
-        products = Product.objects.filter(
-            is_available=True
-        ).order_by('?')  # random order on every refresh
-        paginator = Paginator(products, 3)
-        page = request.GET.get('page')
-        paged_products = paginator.get_page(page)
-        product_count = products.count()
-
+        products = Product.objects.filter(is_available=True)
+ 
+    # Step 4: Apply price range filter
+    if min_price != '':
+        try:
+            products = products.filter(price__gte=int(min_price))
+        except ValueError:
+            pass
+ 
+    if max_price != '':
+        try:
+            products = products.filter(price__lte=int(max_price))
+        except ValueError:
+            pass
+ 
+    # Step 5: Sort
+    if sort_by == 'price_low':
+        products = products.order_by('price')
+    elif sort_by == 'price_high':
+        products = products.order_by('-price')
+    else:
+        products = products.order_by('?')
+ 
+    # Step 6: Paginate
+    paginator = Paginator(products, 3)
+    page = request.GET.get('page')
+    paged_products = paginator.get_page(page)
+    product_count = products.count()
+ 
     context = {
-        'products': paged_products,
+        'products':      paged_products,
         'product_count': product_count,
+        'min_price':     min_price,
+        'max_price':     max_price,
+        'sort_by':       sort_by,
     }
     return render(request, 'store/store.html', context)
 

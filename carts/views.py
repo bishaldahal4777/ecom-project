@@ -221,9 +221,7 @@ def checkout(request, total=0, quantity=0, cart_items=None):
     return render(request, 'store/checkout.html', context)
 
 
-# ==============================
-# ✅ ESEWA PAYMENT VIEWS
-# ==============================
+
 
 # eSewa test credentials
 ESEWA_PRODUCT_CODE = "EPAYTEST"
